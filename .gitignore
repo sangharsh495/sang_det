@@ -1,0 +1,26 @@
+# Python virtual environment
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# sang_det generated output, as described in README.md
+data/output/
+data/manifest.jsonl
+data/sang_det.db
+data/sang_det.db-shm
+data/sang_det.db-wal
+data/logs/
+*.tmp
+
+# Credentials
+data/cookies.txt
+
+# Large data files not suitable for Git
+data.zip
+
+# Downloaded models
+models/

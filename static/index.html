@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sang_det — plate extraction</title>
+<style>
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel-2: #1c232d; --line: #2a323d;
+    --text: #e6edf3; --muted: #8b98a5; --accent: #4b9fff; --accent-dim: #1f3a5f;
+    --ok: #3fb950; --warn: #d29922; --err: #f85149; --run: #4b9fff;
+    --radius: 10px; --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f8fa; --panel: #ffffff; --panel-2: #f0f3f6; --line: #d8dee4;
+    --text: #1f2328; --muted: #636c76; --accent: #0969da; --accent-dim: #ddf4ff;
+    --ok: #1a7f37; --warn: #9a6700; --err: #cf222e; --run: #0969da;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel);
+    position: sticky; top: 0; z-index: 20;
+  }
+  header h1 { font-size: 16px; margin: 0; letter-spacing: .3px; }
+  header h1 span { color: var(--muted); font-weight: 400; }
+  .spacer { flex: 1; }
+  .pill {
+    font: 600 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .6px;
+    padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--panel-2); color: var(--muted); white-space: nowrap;
+  }
+  .pill.running { color: var(--run); border-color: var(--run); }
+  .pill.paused  { color: var(--warn); border-color: var(--warn); }
+  .pill.error, .pill.disk-full { color: var(--err); border-color: var(--err); }
+  .pill.idle    { color: var(--muted); }
+  main { max-width: 1500px; margin: 0 auto; padding: 20px; display: grid; gap: 18px; }
+  .grid-2 { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 18px; }
+  @media (max-width: 1080px) { .grid-2 { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+  .card > h2 {
+    margin: 0; padding: 12px 16px; font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .8px; color: var(--muted);
+    border-bottom: 1px solid var(--line);
+  }
+  .card > .body { padding: 16px; }
+  textarea {
+    width: 100%; min-height: 130px; resize: vertical; padding: 11px 12px;
+    background: var(--bg); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; font: 13px/1.6 var(--mono);
+  }
+  textarea:focus, input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  button {
+    font: 600 13px/1 inherit; padding: 9px 15px; border-radius: 7px; cursor: pointer;
+    background: var(--accent); color: #fff; border: 1px solid transparent;
+  }
+  button.ghost { background: transparent; color: var(--text); border-color: var(--line); }
+  button.ghost:hover { background: var(--panel-2); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.tiny { font-size: 11px; padding: 5px 9px; }
+  .row { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 1px;
+           background: var(--line); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); }
+  .stat { background: var(--panel); padding: 14px 16px; }
+  .stat .v { font: 700 24px/1.2 var(--mono); letter-spacing: -.5px; }
+  .stat .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; margin-top: 4px; }
+  .stat.hero .v { color: var(--ok); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 10px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 600;
+       position: sticky; top: 0; background: var(--panel); z-index: 1; }
+  tbody tr:hover { background: var(--panel-2); }
+  td.num { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+  .title-cell { max-width: 340px; }
+  .title-cell .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .title-cell .u { font: 11px var(--mono); color: var(--muted); overflow: hidden;
+                   text-overflow: ellipsis; white-space: nowrap; }
+  .err-text { color: var(--err); font: 11px var(--mono); word-break: break-word; white-space: normal; }
+  .badge { display: inline-block; font: 600 10px/1 var(--mono); text-transform: uppercase;
+           letter-spacing: .5px; padding: 4px 8px; border-radius: 5px; border: 1px solid; }
+  .badge.pending { color: var(--muted); border-color: var(--line); }
+  .badge.processing { color: var(--run); border-color: var(--run); }
+  .badge.done { color: var(--ok); border-color: var(--ok); }
+  .badge.error { color: var(--err); border-color: var(--err); }
+  .badge.cancelled { color: var(--muted); border-color: var(--line); opacity: .7; }
+  .bar { height: 4px; background: var(--panel-2); border-radius: 3px; overflow: hidden; margin-top: 5px; }
+  .bar > i { display: block; height: 100%; background: var(--run); transition: width .4s ease; }
+  .scroll { max-height: 460px; overflow: auto; }
+  .cfg { display: grid; grid-template-columns: 1fr auto; gap: 9px 12px; align-items: center; }
+  .cfg label { font-size: 12px; color: var(--muted); }
+  .cfg input[type=number], .cfg select {
+    width: 108px; padding: 6px 8px; background: var(--bg); color: var(--text);
+    border: 1px solid var(--line); border-radius: 6px; font: 12px var(--mono); text-align: right;
+  }
+  .cfg input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); }
+  .cfg hr { grid-column: 1 / -1; border: 0; border-top: 1px solid var(--line); margin: 5px 0; width: 100%; }
+  .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  .thumb { background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .thumb img { width: 100%; height: 46px; object-fit: contain; background: #000; display: block; }
+  .thumb .meta { font: 10px var(--mono); color: var(--muted); padding: 4px 6px;
+                 overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .log { font: 11.5px/1.7 var(--mono); max-height: 230px; overflow: auto; }
+  .log div { padding: 2px 0; border-bottom: 1px solid var(--line); }
+  .log .lv { display: inline-block; width: 62px; color: var(--muted); }
+  .log .error .lv { color: var(--err); } .log .warning .lv { color: var(--warn); }
+  .muted { color: var(--muted); }
+  .banner { padding: 11px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 14px;
+            border: 1px solid; display: none; }
+  .banner.err { color: var(--err); border-color: var(--err); background: color-mix(in srgb, var(--err) 10%, transparent); }
+  .banner.ok  { color: var(--ok);  border-color: var(--ok);  background: color-mix(in srgb, var(--ok) 10%, transparent); }
+  .empty { padding: 30px; text-align: center; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>sang_det <span>/ license plate extraction</span></h1>
+  <span class="pill" id="workerPill">connecting</span>
+  <span class="pill" id="devicePill">device —</span>
+  <span class="pill" id="diskPill">disk —</span>
+  <div class="spacer"></div>
+  <button class="ghost tiny" id="themeBtn">theme</button>
+  <button class="ghost tiny" id="retryBtn">retry errored</button>
+  <button class="tiny" id="pauseBtn">pause</button>
+</header>
+
+<main>
+  <div class="banner" id="banner"></div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="grid-2">
+    <section class="card">
+      <h2>Add videos</h2>
+      <div class="body">
+        <textarea id="urls" spellcheck="false"
+          placeholder="Paste one link per line — YouTube URLs and direct .mp4/.m3u8 links can be mixed.
+
+https://www.youtube.com/watch?v=...
+https://youtu.be/...
+https://example.com/traffic-cam.mp4"></textarea>
+        <div class="row" style="margin-top:11px">
+          <button id="submitBtn">Queue videos</button>
+          <span class="muted" id="submitNote">Duplicates already queued or finished are skipped.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Tuning <span class="muted" style="text-transform:none;letter-spacing:0">— writes to config.yaml, applies to the next video</span></h2>
+      <div class="body">
+        <div class="cfg" id="cfg"></div>
+        <div class="row" style="margin-top:13px">
+          <button id="saveCfgBtn">Save settings</button>
+          <span class="muted" id="cfgNote"></span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Videos</h2>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:44px">ID</th>
+            <th style="width:96px">Status</th>
+            <th>Source</th>
+            <th style="width:88px" class="num">Frames</th>
+            <th style="width:88px" class="num">Plates</th>
+            <th style="width:76px" class="num">Dupes</th>
+            <th style="width:88px" class="num">Elapsed</th>
+            <th style="width:150px"></th>
+          </tr>
+        </thead>
+        <tbody id="videoRows"><tr><td colspan="8" class="empty">No videos queued yet.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="grid-2">
+    <section class="card">
+      <h2>Latest saved crops</h2>
+      <div class="body"><div class="thumbs" id="thumbs"></div></div>
+    </section>
+    <section class="card">
+      <h2>Activity</h2>
+      <div class="body"><div class="log" id="log"></div></div>
+    </section>
+  </div>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const POLL_MS = 2500;
+  let latest = null, cfgBuilt = false, cfgDirty = false, inFlight = false;
+
+  const nfmt = (n) => (n ?? 0).toLocaleString();
+  const bytes = (n) => {
+    if (!n) return "0 B";
+    const u = ["B","KB","MB","GB","TB"]; let i = 0;
+    while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+    return n.toFixed(i ? 1 : 0) + " " + u[i];
+  };
+  const dur = (s) => {
+    if (s == null) return "—";
+    s = Math.max(0, Math.round(s));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return h ? `${h}h ${m}m` : (m ? `${m}m ${s % 60}s` : `${s}s`);
+  };
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
+    (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+  function banner(msg, kind) {
+    const el = $("banner");
+    if (!msg) { el.style.display = "none"; return; }
+    el.textContent = msg;
+    el.className = "banner " + (kind || "ok");
+    el.style.display = "block";
+    if (kind === "ok") setTimeout(() => { el.style.display = "none"; }, 5000);
+  }
+
+  async function api(path, opts) {
+    const res = await fetch(path, {
+      headers: { "Content-Type": "application/json" }, ...opts,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || res.statusText);
+    return data;
+  }
+
+  // ---- config panel -------------------------------------------------
+  const FIELDS = [
+    ["sampling.fps", "Frames sampled per second", "number", { step: 0.1, min: 0.05 }],
+    ["detector.confidence", "Detection confidence", "number", { step: 0.01, min: 0.01, max: 0.99 }],
+    ["detector.imgsz", "Inference size (px)", "number", { step: 32, min: 320 }],
+    ["detector.batch_size", "Batch size", "number", { step: 1, min: 1 }],
+    ["sep1"],
+    ["filters.min_box_width", "Min plate width (px)", "number", { step: 1, min: 1 }],
+    ["filters.min_box_height", "Min plate height (px)", "number", { step: 1, min: 1 }],
+    ["filters.crop_padding_px", "Crop padding (px)", "number", { step: 1, min: 0 }],
+    ["sep2"],
+    ["quality.enabled", "Quality gate on", "checkbox"],
+    ["quality.min_laplacian_variance", "Min sharpness (Laplacian)", "number", { step: 1, min: 0 }],
+    ["sep3"],
+    ["dedup.enabled", "Deduplication on", "checkbox"],
+    ["dedup.hash_distance", "Dedup hash distance", "number", { step: 1, min: 0, max: 64 }],
+    ["dedup.window_size", "Dedup window (crops)", "number", { step: 10, min: 1 }],
+    ["dedup.window_seconds", "Dedup window (video secs)", "number", { step: 5, min: 0 }],
+    ["dedup.scope", "Dedup scope", "select", { options: ["video", "global"] }],
+    ["sep4"],
+    ["output.jpeg_quality", "JPEG quality", "number", { step: 1, min: 40, max: 100 }],
+    ["storage.min_free_gb", "Pause below free GB", "number", { step: 0.5, min: 0 }],
+    ["runtime.max_plates_per_video", "Max plates / video (0 = ∞)", "number", { step: 100, min: 0 }],
+  ];
+
+  const dig = (obj, path) => path.split(".").reduce((o, k) => (o == null ? o : o[k]), obj);
+
+  function buildConfig(cfg) {
+    const host = $("cfg");
+    host.innerHTML = "";
+    for (const [key, label, type, opts] of FIELDS) {
+      if (key.startsWith("sep")) { host.insertAdjacentHTML("beforeend", "<hr>"); continue; }
+      const lab = document.createElement("label");
+      lab.textContent = label; lab.htmlFor = "cfg_" + key;
+      let input;
+      if (type === "select") {
+        input = document.createElement("select");
+        for (const o of opts.options) {
+          const opt = document.createElement("option");
+          opt.value = o; opt.textContent = o; input.appendChild(opt);
+        }
+      } else {
+        input = document.createElement("input");
+        input.type = type;
+        Object.entries(opts || {}).forEach(([k, v]) => input.setAttribute(k, v));
+      }
+      input.id = "cfg_" + key; input.dataset.key = key;
+      input.addEventListener("input", () => { cfgDirty = true; });
+      host.appendChild(lab); host.appendChild(input);
+    }
+    applyConfig(cfg);
+    cfgBuilt = true;
+  }
+
+  function applyConfig(cfg) {
+    if (cfgDirty) return;
+    for (const [key, , type] of FIELDS) {
+      if (key.startsWith("sep")) continue;
+      const el = $("cfg_" + key);
+      if (!el) continue;
+      const value = dig(cfg, key);
+      if (type === "checkbox") el.checked = !!value;
+      else el.value = value ?? "";
+    }
+  }
+
+  $("saveCfgBtn").addEventListener("click", async () => {
+    const changes = {};
+    for (const [key, , type] of FIELDS) {
+      if (key.startsWith("sep")) continue;
+      const el = $("cfg_" + key);
+      if (!el) continue;
+      changes[key] = type === "checkbox" ? el.checked
+        : (type === "number" ? Number(el.value) : el.value);
+    }
+    try {
+      await api("/api/config", { method: "PUT", body: JSON.stringify({ changes }) });
+      cfgDirty = false;
+      $("cfgNote").textContent = "saved " + new Date().toLocaleTimeString();
+      banner("Settings written to config.yaml.", "ok");
+    } catch (e) { banner("Could not save settings: " + e.message, "err"); }
+  });
+
+  // ---- submit -------------------------------------------------------
+  $("submitBtn").addEventListener("click", async () => {
+    const box = $("urls");
+    const text = box.value.trim();
+    if (!text) { banner("Paste at least one link first.", "err"); return; }
+    const btn = $("submitBtn");
+    btn.disabled = true; btn.textContent = "Queueing…";
+    try {
+      const r = await api("/api/videos", { method: "POST", body: JSON.stringify({ urls: text }) });
+      box.value = "";
+      banner(`Queued ${r.added} video(s)${r.skipped ? `, skipped ${r.skipped} duplicate(s)` : ""}.`, "ok");
+      refresh();
+    } catch (e) { banner("Submit failed: " + e.message, "err"); }
+    finally { btn.disabled = false; btn.textContent = "Queue videos"; }
+  });
+
+  // ---- controls -----------------------------------------------------
+  $("pauseBtn").addEventListener("click", async () => {
+    const action = latest?.worker?.paused ? "resume" : "pause";
+    try { await api("/api/control/" + action, { method: "POST" }); refresh(); }
+    catch (e) { banner(e.message, "err"); }
+  });
+
+  $("retryBtn").addEventListener("click", async () => {
+    try {
+      const r = await api("/api/control/retry-errors", { method: "POST" });
+      banner(`Requeued ${r.requeued} errored video(s).`, "ok");
+      refresh();
+    } catch (e) { banner(e.message, "err"); }
+  });
+
+  $("themeBtn").addEventListener("click", () => {
+    const root = document.documentElement;
+    const next = root.dataset.theme === "dark" ? "light" : "dark";
+    root.dataset.theme = next;
+    try { localStorage.setItem("sang_det_theme", next); } catch {}
+  });
+  try {
+    const saved = localStorage.getItem("sang_det_theme");
+    if (saved) document.documentElement.dataset.theme = saved;
+  } catch {}
+
+  window.videoAction = async (id, action) => {
+    if (action === "delete" && !confirm("Remove this video from the queue?\nSaved crops stay on disk.")) return;
+    try { await api(`/api/videos/${id}/${action}`, { method: "POST" }); refresh(); }
+    catch (e) { banner(e.message, "err"); }
+  };
+
+  // ---- render -------------------------------------------------------
+  function renderStats(t, w) {
+    const kept = t.detections ? Math.round((t.plates / t.detections) * 100) : 0;
+    $("stats").innerHTML = [
+      ["hero", nfmt(t.plates), "plates saved"],
+      ["", nfmt(t.frames), "frames analysed"],
+      ["", nfmt(t.detections), "raw detections"],
+      ["", kept + "%", "detections kept"],
+      ["", nfmt(t.rejected_dupe), "duplicates dropped"],
+      ["", nfmt(t.rejected_blur), "quality rejects"],
+      ["", nfmt(t.rejected_size), "size rejects"],
+      ["", `${t.done}/${t.videos}`, "videos done"],
+      ["", bytes(t.output_bytes), "on disk"],
+      ["", w.free_gb != null ? w.free_gb + " GB" : "—", "disk free"],
+    ].map(([cls, v, k]) =>
+      `<div class="stat ${cls}"><div class="v">${esc(v)}</div><div class="k">${esc(k)}</div></div>`
+    ).join("");
+  }
+
+  function renderVideos(videos) {
+    const body = $("videoRows");
+    if (!videos.length) {
+      body.innerHTML = '<tr><td colspan="8" class="empty">No videos queued yet.</td></tr>';
+      return;
+    }
+    body.innerHTML = videos.map((v) => {
+      const pct = v.progress != null ? Math.round(v.progress * 100) : null;
+      const bar = v.status === "processing" && pct != null
+        ? `<div class="bar"><i style="width:${pct}%"></i></div>` : "";
+      const detail = v.error
+        ? `<div class="err-text">${esc(v.error)}</div>`
+        : `<div class="u">${esc(v.url)}</div>`;
+      const actions = [];
+      if (v.status === "error" || v.status === "cancelled")
+        actions.push(`<button class="ghost tiny" onclick="videoAction(${v.id},'retry')">retry</button>`);
+      if (v.status === "done")
+        actions.push(`<button class="ghost tiny" onclick="videoAction(${v.id},'restart')">redo</button>`);
+      if (v.status === "pending" || v.status === "processing")
+        actions.push(`<button class="ghost tiny" onclick="videoAction(${v.id},'cancel')">cancel</button>`);
+      actions.push(`<button class="ghost tiny" onclick="videoAction(${v.id},'delete')">×</button>`);
+
+      return `<tr>
+        <td class="num muted">${v.id}</td>
+        <td><span class="badge ${esc(v.status)}">${esc(v.status)}</span></td>
+        <td class="title-cell"><div class="t">${esc(v.title || "(resolving…)")}</div>${detail}${bar}</td>
+        <td class="num">${nfmt(v.frames_processed)}</td>
+        <td class="num" style="color:var(--ok)">${nfmt(v.plates_saved)}</td>
+        <td class="num muted">${nfmt(v.rejected_dupe)}</td>
+        <td class="num muted">${dur(v.elapsed_s)}</td>
+        <td><div class="row" style="gap:5px">${actions.join("")}</div></td>
+      </tr>`;
+    }).join("");
+  }
+
+  function renderHeader(w) {
+    const pill = $("workerPill");
+    const state = w.disk_paused ? "disk-full" : (w.paused ? "paused" : w.state);
+    pill.textContent = state;
+    pill.className = "pill " + state;
+    const d = w.detector;
+    $("devicePill").textContent = d ? `${d.device} · ${d.model}` : (w.detector_error ? "no model" : "loading model…");
+    $("diskPill").textContent = w.free_gb != null ? `${w.free_gb} GB free · ${nfmt(w.output_files)} files` : "disk —";
+    $("diskPill").className = "pill" + (w.disk_paused ? " error" : "");
+    $("pauseBtn").textContent = w.paused ? "resume" : "pause";
+    if (w.detector_error) banner("Detector unavailable: " + w.detector_error, "err");
+  }
+
+  async function refreshThumbs() {
+    try {
+      const { plates } = await api("/api/plates/recent?limit=18");
+      $("thumbs").innerHTML = plates.length ? plates.map((p) => `
+        <div class="thumb">
+          <img loading="lazy" src="/api/plates/file/${encodeURIComponent(p.filename)}" alt="plate crop">
+          <div class="meta" title="${esc(p.filename)}">v${p.video_id} · ${dur(p.timestamp_s)} · ${(p.confidence * 100).toFixed(0)}%</div>
+        </div>`).join("")
+        : '<div class="empty" style="grid-column:1/-1">No crops saved yet.</div>';
+    } catch {}
+  }
+
+  async function refreshLog() {
+    try {
+      const { events } = await api("/api/events?limit=40");
+      $("log").innerHTML = events.map((e) => `
+        <div class="${esc(e.level)}">
+          <span class="lv">${esc(e.level)}</span>
+          <span class="muted">${new Date(e.at * 1000).toLocaleTimeString()}</span>
+          ${e.video_id ? `<span class="muted"> v${e.video_id}</span>` : ""}
+          ${esc(e.message)}
+        </div>`).join("") || '<div class="muted">Nothing logged yet.</div>';
+    } catch {}
+  }
+
+  async function refresh() {
+    if (inFlight) return;
+    inFlight = true;
+    try {
+      const data = await api("/api/status");
+      latest = data;
+      renderHeader(data.worker);
+      renderStats(data.totals, data.worker);
+      renderVideos(data.videos);
+      if (!cfgBuilt) buildConfig(data.config); else applyConfig(data.config);
+      if ($("banner").className.includes("err") &&
+          $("banner").textContent.startsWith("Lost connection")) banner("");
+    } catch (e) {
+      banner("Lost connection to the worker — is run.py still running?", "err");
+    } finally { inFlight = false; }
+  }
+
+  refresh(); refreshThumbs(); refreshLog();
+  setInterval(refresh, POLL_MS);
+  setInterval(refreshThumbs, POLL_MS * 3);
+  setInterval(refreshLog, POLL_MS * 2);
+})();
+</script>
+</body>
+</html>
