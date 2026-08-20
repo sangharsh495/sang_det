@@ -7,7 +7,7 @@
 sampling:
   # Frames analysed per second of source video. 1.0 = one frame/second.
   # Lower = faster run, fewer plates. Higher = more plates, slower run.
-  fps: 1.0
+  fps: 2.0
   # Downscale long edge before detection (px). Keeps VRAM/CPU bounded on 4K
   # sources. Crops are taken from THIS frame, so don't go too low.
   # 0 = keep native resolution.
@@ -52,7 +52,7 @@ quality:
   enabled: true
   # (8) Blur rejection - variance of the Laplacian on the grayscale crop.
   # Higher threshold = stricter. ~40-80 is a sane band for plate crops.
-  min_laplacian_variance: 45.0
+  min_laplacian_variance: 50.0
   # Reject flat/washed-out crops (std-dev of pixel intensity).
   min_contrast_stddev: 18.0
   # Reject crops that are almost entirely one colour (occlusion / glare).
@@ -71,7 +71,7 @@ dedup:
   # 7 sits in that gap with margin on both sides.
   #   Raise  -> more aggressive merging, risks dropping distinct plates.
   #   Lower  -> keeps more repeats of the same plate.
-  hash_distance: 7
+  hash_distance: 10
   # How many recent accepted crops to compare against (rolling window).
   # 240 covers ~4 min of footage at 1 fps - well past a single pass-by.
   window_size: 300
@@ -127,7 +127,11 @@ runtime:
 ingest:
   # Cap the resolution yt-dlp asks for. 1080 is plenty for plate crops and
   # keeps 10-15h runs from being network-bound.
+  # Pull cookies live from a browser (overrides cookies_file when set).
+  # Options: chrome | firefox | safari | brave | edge | ""
+  cookies_from_browser: chrome
   # Path to a Netscape-format cookies.txt file for yt-dlp authentication.
+  # Only used if cookies_from_browser is empty.
   # See https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp
   cookies_file: data/cookies.txt
   max_height: 1080
@@ -141,7 +145,7 @@ ingest:
 
 server:
   host: 127.0.0.1
-  port: 8000
+  port: 8080
   # Start the background worker inside the web process. Set false if you
   # run `python run.py worker` separately.
   autostart_worker: true

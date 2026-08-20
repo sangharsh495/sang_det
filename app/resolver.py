@@ -80,7 +80,7 @@ def _format_selector(max_height: int) -> str:
         f"bestvideo[height<={h}][vcodec^=avc1]/"
         f"bestvideo[height<={h}]/"
         f"best[height<={h}]/"
-        "bestvideo/best"
+        "bestvideo/best/worst"
     )
 
 
@@ -202,9 +202,13 @@ def _resolve_with_ytdlp(url: str, cfg: Config) -> StreamSource:
         "nocheckcertificate": True,
     }
 
-    cookies_file = cfg.get("ingest.cookies_file")
-    if cookies_file:
-        opts["cookies"] = cookies_file
+    cookies_from_browser = cfg.get("ingest.cookies_from_browser", "")
+    if cookies_from_browser:
+        opts["cookiesfrombrowser"] = (cookies_from_browser,)
+    else:
+        cookies_file = cfg.get("ingest.cookies_file")
+        if cookies_file:
+            opts["cookies"] = cookies_file
 
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
@@ -238,9 +242,11 @@ def _resolve_with_ytdlp(url: str, cfg: Config) -> StreamSource:
         source.width = chosen.get("width")
         source.height = chosen.get("height")
         source.fps = chosen.get("fps")
-        # ffmpeg reads https/m3u8 natively. Fragmented DASH and anything
-        # exotic goes through the yt-dlp pipe instead.
-        if direct_url and proto.startswith(("http", "m3u8")):
+        # YouTube direct URLs are unreliable (403s from SABR enforcement and
+        # n-parameter throttling). Always pipe YouTube through yt-dlp so it
+        # handles auth, cookies, and decryption internally.
+        is_youtube = "youtube.com" in url or "youtu.be" in url
+        if direct_url and proto.startswith(("http", "m3u8")) and not is_youtube:
             source.url = direct_url
             source.headers = _clean_headers(
                 {**(info.get("http_headers") or {}), **(chosen.get("http_headers") or {})}
@@ -260,9 +266,13 @@ def _resolve_with_ytdlp(url: str, cfg: Config) -> StreamSource:
         "-o", "-",
         url,
     ]
-    cookies_file = cfg.get("ingest.cookies_file")
-    if cookies_file:
-        source.pipe_cmd.extend(["--cookies", cookies_file])
+    cookies_from_browser = cfg.get("ingest.cookies_from_browser", "")
+    if cookies_from_browser:
+        source.pipe_cmd.extend(["--cookies-from-browser", cookies_from_browser])
+    else:
+        cookies_file = cfg.get("ingest.cookies_file")
+        if cookies_file:
+            source.pipe_cmd.extend(["--cookies", cookies_file])
     log.info("Resolved '%s' -> yt-dlp stdout pipe", title[:60])
     return source
 
