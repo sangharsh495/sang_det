@@ -1,0 +1,19 @@
+{
+  "id": "davidjakob/plate-ocr-v7-synpre",
+  "title": "plate-ocr-v7-synpre",
+  "code_file": "train_v7.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "davidjakob/train-datasets",
+    "davidjakob/indian-plate-3cond-v6"
+  ],
+  "kernel_sources": [],
+  "competition_sources": [],
+  "model_sources": [],
+  "machine_shape": "NvidiaTeslaT4"
+}

@@ -24,7 +24,9 @@ Night benchmarks are transformed daylight photos, so they are an upper bound unt
 * `plate_format.py`: `decode()` (format-constrained reading) and `PlateVoter`
   (combines several frames of one tracked vehicle before reading). Needs only numpy.
 * `kaggle/train_v6.py`: v6 training on cleaned labels, all three conditions,
-  stronger low-clarity augmentation, and a warm start from R1. `kaggle/build.sh --push`.
+  stronger low-clarity augmentation, and a warm start from R1. `kaggle/build.sh v6 --push`.
+* `kaggle/train_v7.py`: pre-train on ~175k synthetic crops (train-datasets), then fine-tune on real.
+* `tools/pseudo_label.py`: label unlabeled video crops by agreement across frames.
 * `tools/label_audit.py`: flags and fixes labels that cannot be Indian registrations.
 
 ## Using it on the Pi

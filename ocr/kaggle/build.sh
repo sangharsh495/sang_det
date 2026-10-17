@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
-# Build the single-file Kaggle kernel (plate_format.py pasted into train_v6.py)
-# and push it.  Usage: ocr/kaggle/build.sh [--push]
+# Build a single-file Kaggle kernel (plate_format.py pasted above the script)
+# and optionally push it.
+#   ocr/kaggle/build.sh v6 [--push]     -> kernel from train_v6.py + kernel-v6.json
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
-out="$here/build"
+ver="${1:?usage: build.sh v6|v7 [--push]}"
+out="$here/build/$ver"
 mkdir -p "$out"
 {
-  cat "$here/../plate_format.py" | sed 's/^from __future__ import annotations$//'
+  sed 's/^from __future__ import annotations$//' "$here/../plate_format.py"
   echo
-  echo "# ---------------------------------------------------------------- train_v6"
-  cat "$here/train_v6.py"
-} > "$out/train_v6.py"
-cp "$here/kernel-metadata.json" "$out/"
-python3 -m py_compile "$out/train_v6.py"
-echo "built $out/train_v6.py"
-if [[ "${1:-}" == "--push" ]]; then
+  echo "# ---------------------------------------------------------------- train_$ver"
+  cat "$here/train_$ver.py"
+} > "$out/train_$ver.py"
+cp "$here/kernel-$ver.json" "$out/kernel-metadata.json"
+python3 -m py_compile "$out/train_$ver.py"
+echo "built $out/train_$ver.py"
+if [[ "${2:-}" == "--push" ]]; then
   kaggle kernels push -p "$out"
 fi
