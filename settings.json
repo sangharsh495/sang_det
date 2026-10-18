@@ -1,0 +1,1 @@
+{ "permissions": { "allow": ["Bash(kaggle datasets create:*)", "Bash(kaggle kernels:*)"] } }
