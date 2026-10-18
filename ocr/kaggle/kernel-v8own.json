@@ -14,6 +14,5 @@
   ],
   "kernel_sources": [],
   "competition_sources": [],
-  "model_sources": [],
-  "machine_shape": "NvidiaTeslaT4"
+  "model_sources": []
 }
