@@ -198,9 +198,28 @@ A.save(A.Compose([
 
 
 # -------------------------------------------------------------- helpers
-def train(tag, weights, train_csv, val_csv, aug_path, lr, epochs, patience):
+
+def run_budgeted(cmd, until_h):
+    """Run cmd, but stop it at until_h hours after start so Kaggle's 12 h
+    limit never discards the run. The best checkpoint saved so far is kept."""
+    import signal
+    print(f'\n$ {cmd}', flush=True)
+    budget = until_h * 3600 - (time.time() - T0)
+    proc = subprocess.Popen(cmd, shell=True, start_new_session=True)
+    try:
+        return proc.wait(timeout=max(300, budget))
+    except subprocess.TimeoutExpired:
+        log(f'time budget reached ({until_h} h) -- stopping, keeping best checkpoint')
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+            proc.wait(timeout=120)
+        except Exception:
+            os.killpg(proc.pid, signal.SIGKILL)
+        return -1
+
+def train(tag, weights, train_csv, val_csv, aug_path, lr, epochs, patience, until_h):
     out = WORK / f'run_{tag}'
-    code = sh(
+    code = run_budgeted(
         f'{sys.executable} -m fast_plate_ocr.cli.train '
         f'--model-config-file {ARCH} --plate-config-file {PCFG} '
         f'--annotations {STAGE}/{train_csv} --val-annotations {STAGE}/{val_csv} '
@@ -208,7 +227,7 @@ def train(tag, weights, train_csv, val_csv, aug_path, lr, epochs, patience):
         f'--epochs {epochs} --batch-size 128 --lr {lr} --warmup-fraction 0.03 '
         f'--label-smoothing 0.05 --use-ema --workers 8 --use-multiprocessing '
         f'--max-queue-size 32 --early-stopping-metric val_plate_acc '
-        f'--early-stopping-patience {patience} --output-dir {out}')
+        f'--early-stopping-patience {patience} --output-dir {out}', until_h)
     log(f'{tag} training exit {code}')
     ck = sorted(out.rglob('*.keras'))
     return next((p for p in ck if 'best' in p.name), ck[-1] if ck else None)
@@ -253,11 +272,11 @@ def benchmark(tag, onnx_path):
 
 # ------------------------------------------------------------------ run
 log('=== stage 1: synthetic pretrain')
-s1 = train('S1', PRE, 's1_train.csv', 's1_val.csv', LIGHT, 1e-3, 20, 4)
+s1 = train('S1', PRE, 's1_train.csv', 's1_val.csv', LIGHT, 1e-3, 20, 4, 3.5)
 if s1:
     benchmark('S1', export('S1', s1))
     log('=== stage 2: real fine-tune (+ synthetic replay)')
-    s2 = train('S2', s1, 's2_train.csv', 's2_val.csv', AUG, 3e-4, 45, 8)
+    s2 = train('S2', s1, 's2_train.csv', 's2_val.csv', AUG, 3e-4, 45, 8, 10.6)
     if s2:
         benchmark('S2', export('S2', s2))
 
