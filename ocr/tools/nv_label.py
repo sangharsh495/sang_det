@@ -30,6 +30,7 @@ import requests
 
 URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
 CELL_W, CELL_H = 320, 120
+NO_THINK = False
 PROMPT = (
     'This image is a grid of {n} Indian vehicle number-plate crops, each labelled '
     'with a red index number in its top-left corner. Read the registration on '
@@ -72,7 +73,7 @@ def ask(keys: Keys, model: str, paths: list[Path], tries: int = 6) -> dict[int, 
     img = base64.b64encode(tile(paths)).decode()
     body = {
         'model': model,
-        'messages': [{'role': 'user', 'content': [
+        'messages': ([{'role': 'system', 'content': '/no_think'}] if NO_THINK else []) + [{'role': 'user', 'content': [
             {'type': 'text', 'text': PROMPT.format(n=len(paths))},
             {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{img}'}},
         ]}],
@@ -121,7 +122,10 @@ def main():
     ap.add_argument('--per', type=int, default=8)
     ap.add_argument('--workers', type=int, default=4)
     ap.add_argument('--out', required=True)
+    ap.add_argument('--no-think', action='store_true', help='ask reasoning models to answer directly')
     a = ap.parse_args()
+    global NO_THINK
+    NO_THINK = a.no_think
 
     paths = [Path(p) for p in a.crops]
     if a.list:
