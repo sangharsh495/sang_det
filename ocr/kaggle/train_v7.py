@@ -1,4 +1,4 @@
-"""v7: synthetic pre-training on ~175k rendered plates, then real fine-tuning.
+"""v7 (budgeted): synthetic pre-training on ~175k rendered plates, then real fine-tuning.
 
 Why: the reader's remaining errors are low-clarity plates -- blur, distance,
 night noise, double-row bikes. The synthetic corpus in train-datasets
@@ -8,6 +8,9 @@ earlier runs only ever mixed in 4,000 of them.
 
 Stage 1  pretrain   cct_xs_v2_global -> all synthetic TRAIN-split crops
                     (<= 10 characters), validated on synthetic val + real val.
+Time budget: stage 1 stops by 2.6 h, stage 2 by 5.6 h; the best checkpoint
+is always exported and scored. 4 data workers (Kaggle T4 boxes have 4 CPUs).
+
 Stage 2  finetune   stage-1 best -> cleaned real day/ambient/IR crops plus a
                     15k synthetic replay sample so stage 1 is not forgotten.
 
@@ -161,12 +164,11 @@ BLACK = (0, 0, 0)
 aug = A.Compose([
     A.Affine(translate_percent=(-0.03, 0.03), scale=(0.8, 1.1), rotate=(-12, 12),
              shear=(-8, 8), border_mode=cv2.BORDER_CONSTANT, fill=BLACK, p=0.7),
-    A.Perspective(scale=(0.02, 0.06), p=0.2),
+    A.Perspective(scale=(0.02, 0.06), p=0.1),
     A.OneOf([
         A.GaussianBlur(sigma_limit=(0.5, 1.5), p=1),
         A.MotionBlur(blur_limit=(3, 9), p=1),
-        A.Defocus(radius=(1, 3), p=1),
-    ], p=0.35),
+        ], p=0.3),
     A.Downscale(scale_range=(0.3, 0.9),
                 interpolation_pair={'downscale': cv2.INTER_AREA, 'upscale': cv2.INTER_LINEAR},
                 p=0.4),
@@ -225,7 +227,7 @@ def train(tag, weights, train_csv, val_csv, aug_path, lr, epochs, patience, unti
         f'--annotations {STAGE}/{train_csv} --val-annotations {STAGE}/{val_csv} '
         f'--augmentation-path {aug_path} --weights-path "{weights}" '
         f'--epochs {epochs} --batch-size 128 --lr {lr} --warmup-fraction 0.03 '
-        f'--label-smoothing 0.05 --use-ema --workers 8 --use-multiprocessing '
+        f'--label-smoothing 0.05 --use-ema --workers 4 --use-multiprocessing '
         f'--max-queue-size 32 --early-stopping-metric val_plate_acc '
         f'--early-stopping-patience {patience} --output-dir {out}', until_h)
     log(f'{tag} training exit {code}')
@@ -272,11 +274,11 @@ def benchmark(tag, onnx_path):
 
 # ------------------------------------------------------------------ run
 log('=== stage 1: synthetic pretrain')
-s1 = train('S1', PRE, 's1_train.csv', 's1_val.csv', LIGHT, 1e-3, 20, 4, 3.5)
+s1 = train('S1', PRE, 's1_train.csv', 's1_val.csv', LIGHT, 1e-3, 8, 3, 2.6)
 if s1:
     benchmark('S1', export('S1', s1))
     log('=== stage 2: real fine-tune (+ synthetic replay)')
-    s2 = train('S2', s1, 's2_train.csv', 's2_val.csv', AUG, 3e-4, 45, 8, 10.6)
+    s2 = train('S2', s1, 's2_train.csv', 's2_val.csv', AUG, 3e-4, 30, 6, 5.6)
     if s2:
         benchmark('S2', export('S2', s2))
 
