@@ -17,6 +17,15 @@ Reader: `fast-plate-ocr` cct-xs (fits the Pi 3B+ budget). Training runs on Kaggl
   string that is a valid registration instead of a per-slot argmax. No
   retraining, about 0.1 ms per plate.
 
+### v8 (R1 -> 150k synthetic -> real day/ambient/IR), Indian-format decoding
+
+| Reader | Day | Day 160px | Day 70px | Amb | Amb 160 | Amb 70 | IR | IR 160 | IR 70 | Mean |
+|---|---|---|---|---|---|---|---|---|---|---|
+| R1 | 85.4 | 86.1 | 84.7 | 76.3 | 76.9 | 75.3 | 81.0 | 80.7 | 74.6 | 80.1 |
+| **v8** | 84.4 | 86.4 | 86.8 | 76.9 | 78.0 | 79.0 | 83.1 | 82.7 | 81.7 | **82.1** |
+
+Model: `models/plate_v8.onnx` (3 MB, cct-xs, same input as R1).
+
 Night benchmarks are transformed daylight photos, so they are an upper bound until real night crops are collected.
 
 ## Files
