@@ -1,0 +1,18 @@
+{
+  "id": "sangharshgedekar/plate-ocr-v6",
+  "title": "plate-ocr-v6",
+  "code_file": "train_v6.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "sangharshgedekar/indian-plate-3cond-v6"
+  ],
+  "kernel_sources": [],
+  "competition_sources": [],
+  "model_sources": [],
+  "machine_shape": "NvidiaTeslaT4"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "sangharshgedekar/plate-qwen-label",
+  "title": "plate-qwen-label",
+  "code_file": "train_qwen.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": ["davidjakob/sang-det-zips", "davidjakob/indian-plate-nv-3cond", "sangharshgedekar/indian-plate-3cond-v6"],
+  "kernel_sources": [],
+  "competition_sources": [],
+  "model_sources": []
+}
