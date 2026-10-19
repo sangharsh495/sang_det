@@ -1,0 +1,15 @@
+{
+  "id": "sangharshgedekar/plate-qwen-yt",
+  "title": "plate-qwen-yt",
+  "code_file": "train_qwenyt.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": ["sangharshgedekar/indian-plate-3cond-v6"],
+  "kernel_sources": ["sangharshgedekar/plate-harvest-day1", "sangharshgedekar/plate-harvest-day2", "sangharshgedekar/plate-harvest-night"],
+  "competition_sources": [],
+  "model_sources": []
+}
