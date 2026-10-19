@@ -132,7 +132,7 @@ for split in syn_rows:
 real_train = list(csv.reader(open(REAL / 'manifests' / 'train_all.csv')))[1:]
 real_val = list(csv.reader(open(REAL / 'manifests' / 'val_all.csv')))[1:]
 extra = [('x_' + p, t) for p, t in list(csv.reader(open(EXTRA / 'extra_train.csv')))[1:]]
-extra = [r for r in extra if (STAGE / r[0]).exists()]
+extra = [r for r in extra if len(r[1]) <= 10 and (STAGE / r[0]).exists()]
 log(f'real train {len(real_train):,}  extra {len(extra):,}')
 rng = random.Random(7)
 syn_val = rng.sample(syn_rows['val'], min(4000, len(syn_rows['val'])))
