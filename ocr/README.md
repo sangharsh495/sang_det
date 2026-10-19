@@ -22,7 +22,8 @@ Reader: `fast-plate-ocr` cct-xs (fits the Pi 3B+ budget). Training runs on Kaggl
 | Reader | Day | Day 160px | Day 70px | Amb | Amb 160 | Amb 70 | IR | IR 160 | IR 70 | Mean |
 |---|---|---|---|---|---|---|---|---|---|---|
 | R1 | 85.4 | 86.1 | 84.7 | 76.3 | 76.9 | 75.3 | 81.0 | 80.7 | 74.6 | 80.1 |
-| **v8** | 84.4 | 86.4 | 86.8 | 76.9 | 78.0 | 79.0 | 83.1 | 82.7 | 81.7 | **82.1** |
+| v8 | 84.4 | 86.4 | 86.8 | 76.9 | 78.0 | 79.0 | 83.1 | 82.7 | 81.7 | 82.1 |
+| **v9** (v8 + 7.7k agreed street crops) | 86.8 | 87.5 | 86.4 | 79.0 | 79.7 | 79.3 | 82.0 | 81.7 | 80.3 | **82.5** |
 
 Model: `models/plate_v8.onnx` (3 MB, cct-xs, same input as R1).
 
