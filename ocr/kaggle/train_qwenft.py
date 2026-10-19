@@ -43,6 +43,7 @@ def log(msg):
 
 
 subprocess.call(f'{sys.executable} -m pip install -q -U "transformers>=4.51" accelerate peft', shell=True)
+subprocess.call(f'{sys.executable} -m pip uninstall -q -y torchao', shell=True)   # old torchao breaks peft
 import torch  # noqa: E402
 from peft import LoraConfig, get_peft_model  # noqa: E402
 from PIL import Image  # noqa: E402
