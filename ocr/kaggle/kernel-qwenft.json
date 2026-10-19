@@ -1,0 +1,15 @@
+{
+  "id": "sangharshgedekar/plate-qwen-ft",
+  "title": "plate-qwen-ft",
+  "code_file": "train_qwenft.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": ["sangharshgedekar/indian-plate-3cond-v6", "sangharshgedekar/indian-plate-extra-v9", "davidjakob/sang-det-zips", "davidjakob/indian-plate-nv-3cond"],
+  "kernel_sources": [],
+  "competition_sources": [],
+  "model_sources": []
+}
