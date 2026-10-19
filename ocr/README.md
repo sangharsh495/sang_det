@@ -38,6 +38,23 @@ ambient and IR versions -> `sangharshgedekar/indian-plate-extra-v9`.
 
 Night benchmarks are transformed daylight photos, so they are an upper bound until real night crops are collected.
 
+## Real-world test: YouTube riding footage (v8, `kaggle/train_yttest.py`)
+
+7 Indian traffic / moto-vlog videos (Mumbai, Bangalore, Delhi), first 8 min each,
+1 frame/s, sang_det's plate detector, v8 reader. 1,248 detections, checked by eye on
+random samples:
+
+* About 40% of detections are not plates (the vlogger's phone screen, signs, tail
+  lights) and another ~35% are too blurry or small for a person to read.
+  v8 gives all of these confidence <= 0.1.
+* Every correct read had confidence >= 0.26. Keep reads with **confidence >= 0.2**:
+  168 of 1,248 tracks pass, which is nearly every plate a person can read.
+* Of 48 random confident reads, **41 were right (85%)**. 5 of the 7 misses were plates
+  cut off at the frame edge; excluding those: 41/43 (95%). Dropping reads shorter
+  than 9 characters removes most cut-off plates.
+* At 1 frame/s most vehicles are seen once, so voting rarely applies; on the Pi
+  (more frames per vehicle) PlateVoter has more to work with.
+
 ## Files
 
 * `plate_format.py`: `decode()` (format-constrained reading) and `PlateVoter`
