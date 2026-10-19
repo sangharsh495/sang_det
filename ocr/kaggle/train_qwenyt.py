@@ -22,7 +22,7 @@ T0 = time.time()
 BUDGET_S = 5.5 * 3600
 IN = Path('/kaggle/input')
 WORK = Path('/kaggle/working')
-MID = 'Qwen/Qwen2.5-VL-7B-Instruct'
+MID = 'Qwen/Qwen2.5-VL-3B-Instruct'   # + plate LoRA from plate-qwen-ft
 BATCH = 16
 PROMPT = ('Read the Indian vehicle registration number on this number plate. '
           'Reply with only the letters and digits, no spaces or punctuation. '
@@ -34,7 +34,8 @@ def log(msg):
     print(f'[{(time.time() - T0) / 60:6.1f} min] {msg}', flush=True)
 
 
-subprocess.call(f'{sys.executable} -m pip install -q -U "transformers>=4.51" accelerate', shell=True)
+subprocess.call(f'{sys.executable} -m pip install -q -U "transformers>=4.51" accelerate peft', shell=True)
+subprocess.call(f'{sys.executable} -m pip uninstall -q -y torchao', shell=True)
 import torch  # noqa: E402
 from PIL import Image  # noqa: E402
 from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration  # noqa: E402
@@ -42,6 +43,13 @@ from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration  # no
 log(f'GPUs: {torch.cuda.device_count()}')
 model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
     MID, torch_dtype=torch.float16, device_map='auto', attn_implementation='sdpa')
+LORA = next((p.parent for p in IN.rglob('adapter_config.json')), None)
+if LORA:
+    from peft import PeftModel
+    model = PeftModel.from_pretrained(model, str(LORA))
+    log(f'plate LoRA loaded from {LORA}')
+else:
+    log('WARNING: no LoRA found, using base model')
 proc = AutoProcessor.from_pretrained(MID, min_pixels=28 * 28 * 16, max_pixels=28 * 28 * 160)
 proc.tokenizer.padding_side = 'left'
 TEMPLATE = proc.apply_chat_template(

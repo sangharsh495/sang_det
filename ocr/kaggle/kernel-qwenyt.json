@@ -8,8 +8,15 @@
   "enable_gpu": true,
   "enable_tpu": false,
   "enable_internet": true,
-  "dataset_sources": ["sangharshgedekar/indian-plate-3cond-v6"],
-  "kernel_sources": ["sangharshgedekar/plate-harvest-day1", "sangharshgedekar/plate-harvest-day2", "sangharshgedekar/plate-harvest-night"],
+  "dataset_sources": [
+    "sangharshgedekar/indian-plate-3cond-v6"
+  ],
+  "kernel_sources": [
+    "sangharshgedekar/plate-harvest-day1",
+    "sangharshgedekar/plate-harvest-day2",
+    "sangharshgedekar/plate-harvest-night",
+    "sangharshgedekar/plate-qwen-ft"
+  ],
   "competition_sources": [],
   "model_sources": []
 }
