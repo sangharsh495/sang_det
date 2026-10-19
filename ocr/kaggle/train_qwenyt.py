@@ -94,8 +94,18 @@ log(f'BENCHMARK day: {ok}/{n} = {ok / n:.1%} exact')
 # ------------------------------------------------------------ 2. crop list
 # Harvest crops: skip plates touching the frame edge (often cut off) and read
 # at most the 3 largest crops of each track, so the GPU time covers more vehicles.
+import tarfile
+TMP = Path('/tmp/harvest')
 todo = []
 for man in sorted(IN.rglob('crops.csv')):
+    tar = man.parent / 'crops.tar'
+    if tar.exists() and not (man.parent / 'crops').is_dir():
+        dst = TMP / man.parent.name
+        dst.mkdir(parents=True, exist_ok=True)
+        tarfile.open(tar).extractall(dst)
+        crop_dir = dst / 'crops'
+    else:
+        crop_dir = man.parent / 'crops'
     rows = [r for r in csv.DictReader(open(man)) if r['edge'] == '0']
     shard = man.parent.name
     by_track = {}
@@ -103,7 +113,7 @@ for man in sorted(IN.rglob('crops.csv')):
         by_track.setdefault(r['track'], []).append(r)
     for rs in by_track.values():
         for r in sorted(rs, key=lambda r: -int(r['w']) * int(r['h']))[:3]:
-            p = man.parent / 'crops' / r['file']
+            p = crop_dir / r['file']
             if p.exists():
                 todo.append(p)
     log(f'{shard}: {len(rows):,} crops, {len(by_track):,} tracks')

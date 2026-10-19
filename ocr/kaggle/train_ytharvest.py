@@ -190,4 +190,6 @@ for vid, q in ids:
     fh.flush()
     log(f'{vid}: {n_crop - before} crops (total {n_crop:,}, {n_track:,} tracks)')
 fh.close()
+# One archive instead of thousands of files: Kaggle lists outputs page by page.
+subprocess.call(f'cd {WORK} && tar -cf crops.tar crops && rm -rf crops videos', shell=True)
 log('done')
