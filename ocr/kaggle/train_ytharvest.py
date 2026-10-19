@@ -34,9 +34,16 @@ QUERIES = {
     'night': ['mumbai night ride 4k', 'bangalore night drive 4k', 'delhi night drive 4k',
               'pune night ride 4k pov', 'hyderabad night drive 4k', 'chennai night ride 4k',
               'india highway night drive dashcam', 'kolkata night drive 4k'],
+    # Street-walking vlogs: slow camera, parked vehicles, sharp plates.
+    'walk1': ['mumbai street walk 4k', 'delhi street walk 4k', 'old delhi walking tour 4k',
+              'bangalore walking tour 4k', 'pune walking tour 4k', 'hyderabad street walk 4k',
+              'chennai street walk 4k', 'kolkata street walk 4k'],
+    'walk2': ['jaipur walking tour 4k', 'varanasi walking tour 4k', 'lucknow street walk 4k',
+              'ahmedabad walking tour 4k', 'indore street walk 4k', 'goa walking tour 4k',
+              'kochi walking tour 4k', 'chandigarh walking tour 4k'],
 }[SHARD]
-PER_QUERY = 8
-MAX_SECONDS = 1200                     # first 20 min of each video
+PER_QUERY = 6 if SHARD.startswith('walk') else 8
+MAX_SECONDS = 2400 if SHARD.startswith('walk') else 1200   # walks are long, keep 40 min
 FPS = 2.0                              # sang_det sampling.fps
 MAX_W = 1920                           # sang_det sampling.max_frame_width
 IMGSZ, CONF, IOU = 960, 0.35, 0.45     # sang_det detector.*

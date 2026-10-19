@@ -15,7 +15,9 @@
     "sangharshgedekar/plate-harvest-day1",
     "sangharshgedekar/plate-harvest-day2",
     "sangharshgedekar/plate-harvest-night",
-    "sangharshgedekar/plate-qwen-ft"
+    "sangharshgedekar/plate-qwen-ft",
+    "sangharshgedekar/plate-harvest-walk1",
+    "sangharshgedekar/plate-harvest-walk2"
   ],
   "competition_sources": [],
   "model_sources": []

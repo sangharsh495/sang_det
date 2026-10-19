@@ -3,7 +3,7 @@
 #   ocr/kaggle/build_harvest.sh [--push]
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
-for shard in day1 day2 night; do
+for shard in ${SHARDS:-day1 day2 night walk1 walk2}; do
   out="$here/build/harvest-$shard"
   mkdir -p "$out"
   {
