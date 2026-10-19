@@ -56,6 +56,17 @@ random samples:
 * At 1 frame/s most vehicles are seen once, so voting rarely applies; on the Pi
   (more frames per vehicle) PlateVoter has more to work with.
 
+## Faster reading on the Pi
+
+* `models/plate_v9_int8.onnx`: v9 with int8 matrix multiplies (static calibration on 600
+  day/ambient/IR crops). 2.0 MB instead of 3.1 MB. Benchmark (built size): day 86.1%,
+  ambient 80.3%, IR 83.1% (fp32 v9: 86.8 / 79.0 / 82.0), so no accuracy loss.
+  On x86 it is ~11% faster; int8 usually gains more on ARM. Measure on the Pi:
+  `python3 ocr/tools/pi_speed.py`.
+* Full int8 (Conv too) was 1.8x faster but lost 3-4 points, so it is not used.
+* Cheaper than a faster model: read all plates of a frame in one call, read each
+  vehicle only until PlateVoter is confident, and skip crops that fail the blur check.
+
 ## Files
 
 * `plate_format.py`: `decode()` (format-constrained reading) and `PlateVoter`
