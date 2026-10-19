@@ -21,6 +21,7 @@ import urllib.request
 from pathlib import Path
 
 SHARD = 'day1'
+VIDEO_IDS = []          # set by build_channels.py: harvest these videos instead of searching
 T0 = time.time()
 BUDGET_S = 10.8 * 3600
 WORK = Path('/kaggle/working')
@@ -41,9 +42,9 @@ QUERIES = {
     'walk2': ['jaipur walking tour 4k', 'varanasi walking tour 4k', 'lucknow street walk 4k',
               'ahmedabad walking tour 4k', 'indore street walk 4k', 'goa walking tour 4k',
               'kochi walking tour 4k', 'chandigarh walking tour 4k'],
-}[SHARD]
+}.get(SHARD, [])
 PER_QUERY = 6 if SHARD.startswith('walk') else 8
-MAX_SECONDS = 2400 if SHARD.startswith('walk') else 1200   # walks are long, keep 40 min
+MAX_SECONDS = 2400 if SHARD.startswith(('walk', 'ch')) else 1200   # walks are long, keep 40 min
 FPS = 2.0                              # sang_det sampling.fps
 MAX_W = 1920                           # sang_det sampling.max_frame_width
 IMGSZ, CONF, IOU = 960, 0.35, 0.45     # sang_det detector.*
@@ -101,7 +102,7 @@ def good_quality(crop):
 
 
 # ------------------------------------------------------------- video list
-ids = []
+ids = [(v, SHARD) for v in VIDEO_IDS]
 for q in QUERIES:
     out = subprocess.run(
         f'yt-dlp --flat-playlist --print "%(id)s %(duration)s" "ytsearch{PER_QUERY}:{q}"',
