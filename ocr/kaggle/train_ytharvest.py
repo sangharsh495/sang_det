@@ -131,21 +131,30 @@ for vid, q in ids:
     if time.time() - T0 > BUDGET_S:
         log('time budget reached')
         break
-    subprocess.call(
-        f'yt-dlp -q --no-warnings -f "bv*[height<=1080][ext=mp4]/b[height<=1080]" '
-        f'--download-sections "*0-{MAX_SECONDS}" --max-filesize 900M '
-        f'-o "{vdir}/{vid}.%(ext)s" "https://www.youtube.com/watch?v={vid}"', shell=True)
-    files = list(vdir.glob(f'{vid}.*'))
-    if not files:
-        log(f'{vid}: download failed')
-        continue
-    cap = cv2.VideoCapture(str(files[0]))
+    # Stream: read frames straight from YouTube while it plays (no file saved).
+    # Fall back to downloading the first MAX_SECONDS if the stream will not open.
+    files = []
+    url = subprocess.run(
+        f'yt-dlp -q --no-warnings -g -f "bv*[height<=1080][ext=mp4]/bv*[height<=1080]" '
+        f'"https://www.youtube.com/watch?v={vid}"', shell=True, capture_output=True,
+        text=True).stdout.strip().split('\n')[0]
+    cap = cv2.VideoCapture(url, cv2.CAP_FFMPEG) if url.startswith('http') else None
+    if cap is None or not cap.isOpened():
+        subprocess.call(
+            f'yt-dlp -q --no-warnings -f "bv*[height<=1080][ext=mp4]/b[height<=1080]" '
+            f'--download-sections "*0-{MAX_SECONDS}" --max-filesize 900M '
+            f'-o "{vdir}/{vid}.%(ext)s" "https://www.youtube.com/watch?v={vid}"', shell=True)
+        files = list(vdir.glob(f'{vid}.*'))
+        if not files:
+            log(f'{vid}: download failed')
+            continue
+        cap = cv2.VideoCapture(str(files[0]))
     fps = cap.get(cv2.CAP_PROP_FPS) or 30
     step = max(1, int(round(fps / FPS)))
     idx = 0
     live = []
     before = n_crop
-    while time.time() - T0 < BUDGET_S:
+    while time.time() - T0 < BUDGET_S and idx / fps < MAX_SECONDS:
         if not cap.grab():
             break
         if idx % step == 0:
@@ -188,7 +197,7 @@ for vid, q in ids:
     for f in files:
         f.unlink()
     fh.flush()
-    log(f'{vid}: {n_crop - before} crops (total {n_crop:,}, {n_track:,} tracks)')
+    log(f'{vid}: {n_crop - before} crops (total {n_crop:,}, {n_track:,} tracks, {"download" if files else "stream"})')
 fh.close()
 # One archive instead of thousands of files: Kaggle lists outputs page by page.
 subprocess.call(f'cd {WORK} && tar -cf crops.tar crops && rm -rf crops videos', shell=True)
