@@ -1,11 +1,11 @@
-"""Label unlabeled street-video crops with NVIDIA Nemotron (CPU notebook, ~11 h).
+"""Label unlabeled street-video crops with NVIDIA Nemotron + Llama-3.2-90B (CPU notebook).
 
 Keys are NOT in this code. Add them in the notebook: Add-ons -> Secrets ->
 name NVIDIA_API_KEY, value = one or more nvapi-... keys separated by commas.
 
 Inputs  : sang-det-zips (45,831 crops + plate_labels*.csv),
           indian-plate-nv-3cond (manifest of crops already used in training).
-Output  : /kaggle/working/nemo_reads.csv  (path, text). Written as it goes, so
+Output  : /kaggle/working/nemo_reads.csv, llama_reads.csv  (path, text). Written as it goes, so
           a run cut off at the time limit still keeps everything read so far.
 """
 import base64
@@ -27,9 +27,9 @@ import requests
 T0 = time.time()
 BUDGET_S = 11.3 * 3600
 IN = Path('/kaggle/input')
-OUT = Path('/kaggle/working/nemo_reads.csv')
 URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
-MODEL = 'nvidia/nemotron-3.5-super-vl-120b-a12b'
+MODELS = {'nemo': 'nvidia/nemotron-3.5-super-vl-120b-a12b',
+          'llama': 'meta/llama-3.2-90b-vision-instruct'}
 PER, WORKERS = 4, 32
 CELL_W, CELL_H = 320, 120
 PROMPT = (
@@ -93,11 +93,11 @@ key_cycle = itertools.cycle(KEYS)
 key_lock = threading.Lock()
 
 
-def ask(paths):
+def ask(model, paths):
     img = base64.b64encode(tile(paths)).decode()
-    body = {'model': MODEL, 'max_tokens': 4000, 'temperature': 0.0, 'top_p': 1.0,
-            'messages': [{'role': 'system', 'content': '/no_think'},
-                         {'role': 'user', 'content': [
+    sysmsg = [{'role': 'system', 'content': '/no_think'}] if 'nemotron' in model else []
+    body = {'model': model, 'max_tokens': 4000, 'temperature': 0.0, 'top_p': 1.0,
+            'messages': sysmsg + [{'role': 'user', 'content': [
                              {'type': 'text', 'text': PROMPT.format(n=len(paths))},
                              {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{img}'}}]}]}
     delay = 5
@@ -133,29 +133,33 @@ def ask(paths):
     return {}
 
 
-fh = open(OUT, 'w', newline='')
-writer = csv.writer(fh)
-writer.writerow(['path', 'text'])
+batches = [todo[i:i + PER] for i in range(0, len(todo), PER)]
+files = {k: open(f'/kaggle/working/{k}_reads.csv', 'w', newline='') for k in MODELS}
+writers = {k: csv.writer(f) for k, f in files.items()}
+for w in writers.values():
+    w.writerow(['path', 'text'])
 lock = threading.Lock()
 done = [0]
-batches = [todo[i:i + PER] for i in range(0, len(todo), PER)]
+jobs = [(k, b) for b in batches for k in MODELS]      # both models interleaved
 
 
-def run(batch):
+def run(job):
+    k, batch = job
     if time.time() - T0 > BUDGET_S:
         return
-    res = ask(batch)
+    res = ask(MODELS[k], batch)
     with lock:
         for i, p in enumerate(batch, 1):
             if i in res:
-                writer.writerow([str(p.relative_to(sdz)), res[i]])
-        fh.flush()
+                writers[k].writerow([str(p.relative_to(sdz)), res[i]])
+        files[k].flush()
         done[0] += 1
-        if done[0] % 100 == 0:
-            print(f'{done[0]:,}/{len(batches):,} requests  {(time.time() - T0) / 60:.0f} min', flush=True)
+        if done[0] % 200 == 0:
+            print(f'{done[0]:,}/{len(jobs):,} requests  {(time.time() - T0) / 60:.0f} min', flush=True)
 
 
 with ThreadPoolExecutor(WORKERS) as ex:
-    list(ex.map(run, batches))
-fh.close()
+    list(ex.map(run, jobs))
+for f in files.values():
+    f.close()
 print('finished', done[0], 'requests', flush=True)
