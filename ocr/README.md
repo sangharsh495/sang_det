@@ -26,6 +26,16 @@ Reader: `fast-plate-ocr` cct-xs (fits the Pi 3B+ budget). Training runs on Kaggl
 
 Model: `models/plate_v8.onnx` (3 MB, cct-xs, same input as R1).
 
+### New labels for v9 (no paid API)
+
+27,757 unlabeled street-video crops were read by Qwen2.5-VL-7B (Kaggle GPU,
+87.5% exact on the day benchmark), Nemotron (5.6k crops) and v8. A crop is kept
+when two readers agree, no reader disagrees and the read is a valid 9-10
+character plate: 7,814 crops / 4,023 plates (benchmark check of the rule: 224/225,
+the one miss was a typo in the benchmark answer). Each is added as day,
+ambient and IR versions -> `sangharshgedekar/indian-plate-extra-v9`.
+`kaggle/train_v9.py` fine-tunes v8 on real + these.
+
 Night benchmarks are transformed daylight photos, so they are an upper bound until real night crops are collected.
 
 ## Files
